@@ -6,9 +6,15 @@ import org.apache.commons.lang3.StringUtils;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
+import static java.lang.Math.PI;
+import static java.lang.Math.cos;
+
 public class Circle2GeoHash {
+
+    private static final double EARTH_RADIUS_METERS = 6371000.0;
 
     public static List<String> getGeohashList(double latitude, double longitude, double radius, int precision) {
         List<String> geoHashList = new ArrayList<String>();
@@ -21,26 +27,41 @@ public class Circle2GeoHash {
         double gridHeight = (gridHeightArray[precision -1]) /2;
         double gridWidth = (gridWidthArray[precision -1]) /2;
 
-        int latCell = (int)(radius / gridHeight);
-        int lonCell = (int)(radius / gridWidth);
+        int latCell = (int)Math.ceil(radius / gridHeight);
+        int lonCell = (int)Math.ceil(radius / gridWidth);
 
-        for (int i =0; i <= latCell; i ++) {
+        List<List<Double>> points = new ArrayList<>();
+
+        for (int i =0; i < latCell; i ++) {
             double tempY = y + gridHeight * i;
-            for (int j =0; j <= lonCell; j ++) {
+            for (int j =0; j < lonCell; j ++) {
                 double tempX = x + gridWidth * j;
                 if (GeoUtil.isInCircle(tempY, tempX, y, x, radius)) {
-                    double centreX = tempX + lonCell / 2;
-                    double centreY = tempY + latCell /2;
+                    double centreX = tempX + gridWidth / 2;
+                    double centreY = tempY + gridHeight /2;
                     List<Double> latLonTuple = GeoUtil.convert2LatLon(centreY, centreX, latitude, longitude);
-                    GeoHash geoHash = GeoHash.withCharacterPrecision(latLonTuple.get(0), latLonTuple.get(1), precision);
-                    geoHashList.add(geoHash.toBase32());
+                    points.add(latLonTuple);
+                    List<Double> latLonTuple2 = GeoUtil.convert2LatLon(-centreY, centreX, latitude, longitude);
+                    points.add(latLonTuple2);
+                    List<Double> latLonTuple3 = GeoUtil.convert2LatLon(centreY, -centreX, latitude, longitude);
+                    points.add(latLonTuple3);
+                    List<Double> latLonTuple4 = GeoUtil.convert2LatLon(-centreY, -centreX, latitude, longitude);
+                    points.add(latLonTuple4);
+
 
                 }
             }
+
+        }
+        for (List<Double> point : points) {
+            GeoHash geoHash = GeoHash.withCharacterPrecision(point.get(0), point.get(1), precision);
+            geoHashList.add(geoHash.toBase32());
 
         }
 
 
         return geoHashList.stream().distinct().collect(Collectors.toList());
     }
+
+
 }
